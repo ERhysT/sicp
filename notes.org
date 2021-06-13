@@ -1,0 +1,657 @@
+* Chapter 1 Building Abstrations with procedures
+** Expressions and Evaluations 
+You type an _expression_, the interpreter responds by displaying the
+result of _evaluating_ that expression.
+*** ()
+An expression can be a single in combination. Expressions formed by
+delimiting lists of expressions within parentheses to indicate order
+are called _combinations_.
+
+#+begin_src scheme 
+(+ 137 342)
+#+end_src
+
+#+RESULTS:
+: 479
+
+This is prefix notation: the leftmost element is the _operator_, and
+all other elements are _operators_. Thus is of the general form:
+
+    (<operator> <1st operand> ... <Nth operand>)
+
+Prefix notation allows unlimited operators and nesting, where the
+elements of combninations are again combinations.
+
+#+begin_src scheme
+  (+ (* 3
+	(+ (* 2 4)
+	   (+ 3 5)))
+     (+ (- 10 7)
+	6))
+#+end_src
+
+#+RESULTS:
+: 57
+
+To make it easier to read operands are aligned vertically. When
+evaluating a combination, first each of the sub-expressions are
+evaluated, then the operator (value of leftmost sub-expression) is
+applied to each of the operands (evaluated value of all other
+sub-expressions).
+
+Eventually _primitive expressions_ such as numerals need to be
+evaluated. The rules are: values of numerals are the numbers they
+name, the values of build-in operators are their machine instructions,
+and, the values of other names are objects associated with those names
+in the environment.
+
+*** define
+
+To name things 'define' is used. It identifies a _variable_ who's
+_value_ is the object. This requires memory and this memory is called
+the _environment_, in this case the _global environment_.  
+
+Definitions are not combinations, but _special forms_ and as such do
+not follow the evaluation rules. Each special form has its own
+evaluation rule.
+
+#+begin_src scheme
+  (define size 2)
+  size
+#+end_src
+
+#+RESULTS:
+: 2
+ 
+_Procedure Definitions_ allow compound operations to be given a name
+then referred to as a unit.
+
+#+begin_src scheme :session sq
+  (define (square x) (* x x)) 
+  (square 12)
+#+end_src
+
+#+RESULTS:
+: 144
+
+So the general form of a procedure definition is:
+
+    (define (<name> <formal parameters>) <body>)
+
+Where: <name> is a symbol to be associated with the procedure
+definition in the environment, <formal parameters> are names used
+within the body to refer to corresponding arguments of the procedure,
+<body> can be a single or sequence of expressions, the interpreter
+evaluates each expression, when the formal parameters are replaced by
+the arguments, and returns value of the final expression will yield
+the value
+
+Compound procedures are used in exactly the same way as primitive
+procedures.
+
+#+begin_src scheme :session sq
+  (define (sum-of-sqaures a b) (+ (square a) (square b)))
+  (sum-of-sqaures 4 5)
+#+end_src
+
+#+RESULTS:
+: 41
+
+** Conditional Expressions
+With only definition and evaluation _conditional procedures_
+(procedures which progress through different branches as the results
+of a test) cannot be created.
+*** cond
+Case analysis in scheme is performed
+with the special form 'cond' which has the general form:
+
+(cond (<p1> <e1>)
+      ...
+      (<pN> <eN>))
+
+Where, <pn> is a _predicate_, a test that evaluates false (#f) or true
+(anything other than #f). Each predicate is paired with a _consequent
+expression_ <en> evaluated only if the predicate evaluates to true.
+
+Each predicate is tested sequentially until one evaluates to not #f,
+after which its paired consequent expression is evaluated and returned
+as the value of evaluating the entire condition expression. If no
+value is determined the result of the conditional expression is
+undefined.
+
+The absolute of a real number, defined in equation (1), can be expressed
+using 'cond'.
+
+\begin{equation*}
+  |x| =
+    \begin{cases}
+      \quad x \quad\text{if} \quad x > 0,\\
+      \quad 0 \quad\text{if} \quad x = 0, \\ 
+      \quad -x \quad\text{if} \quad x < 0. 
+    \end{cases}       
+\end{equation*}
+
+#+begin_src scheme
+  (define (abs x)
+    (cond ((> x 0) x)
+	  ((= x 0) 0)
+	  ((< x 0) (- x))))
+  (abs -7)
+#+end_src
+
+#+RESULTS:
+: 7
+
+The special symbol can also be used in place of the final predicate
+<pN> in that case its consequent expression is evaluated whenever all
+previous clauses have evaluated to #f. Using this equation (1) can be
+expressed more succinctly.
+
+ #+begin_src scheme
+   (define (abs x)
+     (cond ((< x 0) (- x))
+	   (else x)))
+   (abs -9)
+ #+end_src
+
+ #+RESULTS:
+ : 9
+
+*** if
+Another special form used for conditionals is 'if'. It can be used
+when there are precisely two cases in the case analysis. The general
+form of 'if' is:
+
+(if <predicate> <consequent> <alternative>)
+
+Where the interpreter first evaluates the <predicate>. If the
+predicate evaluates to anything other than #f, the interpreter then
+evaluates the <consequent> and returns its value. Otherwise it
+evaluates the <alternative> and returns its value. The consequent and
+alternative must be single expressions.
+
+Equation (1) can be rewritten with even more succinctly with 'if'.
+
+ #+begin_src scheme
+   (define (abs x)
+     (if (< x 0) (- x) x))
+   (abs -16)
+ #+end_src
+
+ #+RESULTS:
+ : 16
+
+*** and, or, not
+The three main logical operators are 'and', 'or' and 'not', who's
+general forms are shown below. Note that 'and' and 'or' are special
+procedures, as all sub-expressions are not necessarily evaluated i.e.
+they can be _short circuited_. Not is an ordinary procedure.
+
+(and <e1> ... <eN>)
+
+Each expression <e> is sequentially evaluated, whenever an expression
+evaluates to #f, remaining expressions are short circuited and the
+value of the 'and' expression is then #f. If no sub-expressions
+evaluate to #f then the value of evaluating the 'and' expression is
+the value of evaluating <eN>
+
+(or <e1> ... <eN>)
+
+Each expression <e> is sequentially evaluated, whenever an expression
+evaluates to anything other than #f, that value is returned as the
+value of the 'or' expression, with remaining expressions short
+circuited. Whenever each expression evaluates to #f, the value of
+the or expression will be #f.
+
+(not <e>)
+
+The value of the expression will be #t when <e> evaluates to #f,
+otherwise it will be #f.
+
+For example, the inequality 5 < x 10 can be expressed as shown below:
+
+#+begin_src scheme
+  (define (between-5-and-10? x) (and (> x 5) (< x 10)))
+  (between-5-and-10 7)
+#+end_src
+
+#+RESULTS:
+: #t
+
+As another example, we can define a predicate to test whether one
+number is greater than or equal to another as:
+
+#+begin_src scheme
+  (define (greater-than-or-equal-to? x y) (or (> x y) (= x y)))
+  (greater-than-or-equal-to? 21 20)
+#+end_src
+
+#+RESULTS:
+: #t
+
+Alternatively the above as:
+
+#+begin_src scheme
+  (define (greater-than-or-equal-to? x y) (not (< x y)))
+  (greater-than-or-equal-to? 10 11)
+#+end_src
+
+#+RESULTS:
+: #f
+
+** Procedures as Black-Box Abstractions
+Procedures are similar to ordinary mathematical functions. They
+specify a value that is determined by one or more parameters. The
+difference is that maths is usually declarative (it states what is),
+whereas computer programs are imperative (they state how to).
+
+Declaratively, the square root function can be defined as below. It
+can be easily seen that this cannot be written as a imperative procedure.
+
+\begin{equation}
+	\sqrt{x} = y \quad\text{where,}\quad y >= 0, \quad y^2 = x.
+\end{equation}
+
+The square root can be computed using newton's method of successive
+approximations, an iterative method which says that whenever we have a
+guess y for the value of the square root of a number x, we can perform
+a simple manipulation to get a better guess. 
+
+#+begin_src scheme
+  (define (sqrt-iter guess x)
+    ;; Recurse until guess converges to estimate of sqrt x  
+    (if (good-enough? guess x)
+	guess
+	(sqrt-iter (improve guess x) x)))
+  (define (good-enough? guess x)
+    ;; Has guess has converged to guess^2 ~= x?  
+    (< (abs (- (square guess) x)) 0.001))
+  (define (square x)
+    ;; x^2
+    (* x x))
+  (define (improve guess x)
+    ;; Make another step towards convergence by averaging the guess with
+    ;; the quotient of x and the guess.
+    (average guess (/ x guess)))
+  (define (average x y)
+    ;; Numerical mean of x and y
+    (/ (+ x y) 2))
+  (define (sqrt x)
+    ;; 
+    (sqrt-iter 1.0 x))
+
+  (sqrt 49)
+#+end_src
+
+#+RESULTS:
+: 7.000000141269659
+
+There are some important points to note from the above example: The
+definition of 'sqrt-iter' is _recursive_; the procedure is defined in
+terms of itself. Many small simple definitions are written for the
+purpose of _procedural abstraction_. This promotes readability by
+suppressing detail in other definitions and allows reuse of code.
+
+Also importantly: the formal parameters of a procedure are local in
+scope to the body of a procedure. Consequently the procedures below
+are functionally identical. It is said that the procedure definition
+_binds_ its formal parameters, it is a _bound variable_. If a variable
+is not bound it is _free_. The set of expressions for which a binding
+defines a name is called the _scope_ of the name.
+
+#+begin_src scheme 
+(define (square x) (* x x))
+(define (square y) (* y y)) 
+#+end_src
+
+In a large a project sub-procedures can be nested within other
+procedures in what is known as a _block structure_. This is a solution
+to avoiding clashes of names such as good-enough? and improve within
+other procedures.
+
+#+begin_src scheme
+  (define (square x) (* x x))
+  (define (average x y) (/ (+ x y) 2))
+  (define (sqrt x)
+    (define (good-enough? guess x)
+      (< (abs (- (square guess) x)) 0.001))
+    (define (improve guess x) (average guess (/ x guess)))
+    (define (sqrt-iter guess x)
+      (if (good-enough? guess x)
+	  guess
+	  (sqrt-iter (improve guess x) x)))
+    (sqrt-iter 1.0 x))
+
+  (sqrt 49.0)
+#+end_src
+
+#+RESULTS:
+: 7.000000141269659
+
+This can be improved upon by realising that as x is bound during the
+definition of sqrt, each sub-procedure of sqrt is within the scope of
+x. Consequently there is no need to pass x explicitly to the
+sub-procedures. This is called _lexical scoping_.
+
+#+begin_src scheme
+  (define (square x) (* x x))
+  (define (average x y) (/ (+ x y) 2))
+  (define (sqrt x)
+    (define (good-enough? guess)
+      (< (abs (- (square guess) x)) 0.001))
+    (define (improve guess) (average guess (/ x guess)))
+    (define (sqrt-iter guess)
+      (if (good-enough? guess)
+	  guess
+	  (sqrt-iter (improve guess))))
+    (sqrt-iter 1.0))
+
+  (sqrt 49.0)
+#+end_src
+
+#+RESULTS:
+: 7.000000141269659
+
+** Procedures and the Processes They Generate 
+*** Linear Recursion and Iteration
+
+The factorial function is defined here in a declarative manner.
+
+
+
+\begin{equation}
+n! = n\cdot(n-1)\cdot(n-2)\cdot\cdot\cdot1\cdot2\cdot3
+\end{equation}
+
+Implemented as a _recursive process_, the factorial builds up a chain
+of _deferred operations_. In this case the deferred operations are a
+chain of multiplications who's length is proportional to n; it is a
+_linear recursive process_.
+
+#+begin_src scheme :session factorial-recursive
+  (define (factorial n)
+    ;; Calculates factorial of n using a linear recursive process
+    (if (= n 1) n (* n (factorial (- n 1)))))
+
+  ;; This can be expanded with applicative order to build up a chain of
+  ;; deferred multiplications which are then evaluated
+  (factorial 4)
+  (* 4 (factorial (- 4 1)))
+  (* 4 (factorial 3))
+  (* 4 (* 3 (factorial (- 3 1))))
+  (* 4 (* 3 (factorial 2)))
+  (* 4 (* 3 (* 2 (factorial (- 2 1)))))
+  (* 4 (* 3 (* 2 (factorial 1))))
+  (* 4 (* 3 (* 2 1)))
+  (* 4 (* 3 2))
+  (* 4 6)
+  24
+
+  (= (factorial 4) 24)
+#+end_src
+
+#+RESULTS:
+: #t
+
+Implemented as an _iterative process_, the factorial can be summarised
+by a fixed number of state variables, a fixed rule that describes how
+the state variables should be updated, and an (optional) end
+test. There is no growing chain of deferred operations but the number
+of steps required grows linearly with n; it is a linear iterative
+process.
+
+#+begin_src scheme
+  (define (iter n product counter)
+    (if (> counter n)
+	product
+	(iter n (* product counter) (+ counter 1))))
+  (define (factorial n)
+    (iter n 1 1))
+
+  ;; This can be expanded to a fixed rule that is run n times.
+  (factorial 5)
+  (iter 5 1 1)
+  (iter 5 (* 1 1) (+ 1 1))
+  (iter 5 1 2)
+  (iter 5 (* 1 2) (+ 2 1))
+  (iter 5 2 3)
+  (iter 5 (* 2 3) (+ 3 1))
+  (iter 5 6 4)
+  (iter 5 (* 6 4) (+ 4 1))
+  (iter 5 24 5)
+  (iter 5 (* 24 5) (+ 5 1))
+  120
+
+  (= (factorial 5) 120)
+#+end_src
+
+#+RESULTS:
+: #t
+
+Another common pattern of computation is _tree recursion_. The classic
+example is the Fibonacci sequence in which each number is the sum of
+the preceding two.
+
+\begin{equation*}
+  \text{Fib}(n) =
+    \begin{cases} 
+      0 &\text{if }n=0, \\
+      1 &\text{if }n=1,  \\
+      \text{Fib}(n-1)+\text{Fib}(n-2) &\text{otherwise}.
+    \end{cases}
+\end{equation*}
+
+The recursive process is straightforward but the iterative process is
+much more efficient because the whole sequence is not recalculated
+back to the root of the tree each recursion thanks to the state
+variables.
+
+#+begin_src scheme
+  (define (fib-tree n)
+    ;; Determine Fibonacci number using recursive tree process
+    (cond ((= n 0) 0)
+	  ((= n 1) 1)
+	  (else (+ (fib-tree (- n 1)) (fib-tree (- n 2))))))
+
+  (define (fib-iterative n)
+    ;; Determine Fibonacci number using iterative process which requires
+    ;; three state variables.
+    (define (iter a b count)
+      (if (= count 0) b
+	  (iter (+ a b) a (- count 1))))
+    (iter 1 0 n))
+
+  (= (fib-tree 10) (fib-iterative 10) 55)
+#+end_src
+
+#+RESULTS:
+: #t
+
+*** Orders of Growth
+Order of growth is used to obtain a measure of the resources required
+by a process as the inputs become larger.
+
+If n is a parameter that measures the size of a problem, and R(n) is
+the amount of resources required as a function of n. It is said that
+$R(n)$ has order of growth $\theta(f(n))$, if there are positive
+constants independent of n such that  $k_1 f(n) \leq R(n) \leq k_2 f(n)$
+for any sufficiently large value of n. 
+
+
+As an example, this is the definition of exponentiation of positive
+integers:
+
+\begin{align*}
+  b^n &= b \cdot b^{n-1} \\   
+  b^0 &= 1
+\end{align*}
+
+Implemented as a linear recursive process, it requires $\Theta(n)$
+steps and $\Theta(n)$ space.
+
+#+begin_src scheme
+  (define (expt b n)
+    ;; b^n
+    (if (= n 0)
+	1
+	(* b (expt b (- n 1)))))
+
+  (expt 2 3)				; expand
+  (* 2 (expt 2 2))
+  (* 2 (* 2 (expt 2 1)))
+  (* 2 (* 2 (* 2 (expt 2 0))))
+  (* 2 (* 2 (* 2 1)))
+  (* 2 (* 2 2))
+  (* 2 4)
+  8
+
+  (= (expt 2 3) 8)
+#+end_src
+
+#+RESULTS:
+: #t
+
+It is easy to formulate an equivalent linear iteration process which
+requires $\Theta(n)$ steps and $\Theta(1)$ space.
+
+#+begin_src scheme
+  (define (expt b n)
+    (iter 1 n b))
+  (define (iter product n b)
+    (if (= n 0)
+	product
+	(iter (* product b) (- n 1) b)))
+
+  (expt 2 3)				; expand
+  (iter 2 2 2)
+  (iter 4 1 2)
+  (iter 8 0 2)
+  8
+
+  (= (expt 2 3) 8)
+#+end_src
+
+#+RESULTS:
+: #t
+
+The number of steps can be further reduced by using successive
+squaring, which can be defined for positive integers as:
+
+\begin{equation*}
+  b^n = 
+  \begin{cases}
+    1                 &\text{if }n = 0, \\
+    (b^\frac{n}{2})^2 &\text{if }n\text{ is even and }n \neq 0,\\
+    b \cdot b^{n-1}   &\text{if }n\text{ is odd.}\\
+  \end{cases} 
+\end{equation*}
+
+Implemented recursively, this process grows about as fast as the
+logarithm of n to the base 2 with n in both space and number of steps,
+so it can be said the process has $\Theta(\log n)$ growth and .
+
+#+begin_src scheme
+  (define (expt b n)
+    (cond ((= n 0) 1)
+	  ((even? n) (* (expt b (/ n 2))
+			(expt b (/ n 2))))
+	  (else (* b
+		   (expt b (- n 1))))))
+
+  (expt 2 5)				; expanded 
+  (* 2 (expt 2 4))
+  (* 2 (* (expt 2 2) (expt 2 2)))
+  (* 2 (* (* (expt 2 1) (expt 2 1)) (* (expt 2 1) (expt 2 1))))
+  (* 2 (* (* (* 2 2) (* 2 2))))
+
+  (= 32 (expt 2 5))
+#+end_src
+
+#+RESULTS:
+: #t
+
+Implemented as an iterative process with successive squaring, the
+space has $\Theta(1)$ growth while the process grows at $\Theta(\log n)$ 
+while $ab^n$ remains unchanged throughout each iteration. $ab^n$
+is known as the _invariant quantity_ and is a powerful way to think
+about iterative algorithms.
+
+#+begin_src scheme
+  (define (expt b n)
+    (iter b n 1))
+  (define (iter b n product)
+    (cond ((= n 0) product)
+	  ((even? n) (iter b (/ n 2) (* product product)))
+	  (else (iter b (- n 1) (* product b)))))
+
+  (expt 2 10)
+#+end_src
+
+#+RESULTS:
+: 32
+
+*** Greatest Common Divisors 
+The greatest common divisor of two integers a and b is defined to be
+the largest integer that divides both a and b with no remainder. One
+way to find the greatest common divisor is to factor them and search
+for common factors.
+
+However, there is a famous algorithm that is much more efficient.
+Euclid's Algorithm is based on the principle that if r is the
+remainder when a is divided by b, then the common divisors of a and b
+are precisely the same as the common divisors of b are r.
+
+#+begin_src scheme
+  (define (gcd a b)
+    ;; Greatest common divisor of integers a and b
+    (if (= b 0) a (gcd b (remainder a b))))
+
+  (gcd 120 24)
+#+end_src
+
+#+RESULTS:
+: 24
+
+*** Testing for Primality
+One way to test if a number is prime is to find the number's divisors;
+if a number is prime, it must have a divisor less than or equal to
+$\sqrt{n}$. Consequently the algorithm has an order of growth $\Theta(\sqrt{n})$.
+
+#+begin_src scheme
+  (define (square n)
+    ;; n raised to the power of 2
+    (* n n))
+
+  (define (smallest-divisor n)
+    ;; Smallest divisor of n
+    (find-divisor n 2))			
+  (define (find-divisor n test-divisor)
+    ;; n's next divisor starting at test-divisor
+    (cond ((> (square test-divisor) n) n)
+	  ((divides? test-divisor n) test-divisor)
+	  (else (find-divisor n (+ test-divisor 1)))))
+  (define (divides? a b)
+    ;; Tests if a divides by b
+    (= (remainder b a) 0))
+  (define (prime? n)
+    ;; Test if n is a prime number
+    (= n (smallest-divisor n)))
+
+  (prime? 113)
+#+end_src
+
+#+RESULTS:
+: #t
+
+A primality test based on Fermat's Little Theorem has an order of
+growth $\Theta(\log{n})$. It states that if 'n' is a prime number and
+'a' is any positive integer less than 'n', then 'a' raised to the nth
+power is congruent to a modulo 'n'.
+
+If n is a prime number: 
+   provided a is a positive integer,
+   provided a is less than n, 
+then a^n = a%n,
+    
+
+
